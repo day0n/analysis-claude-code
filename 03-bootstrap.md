@@ -147,7 +147,10 @@ getActiveTimeCounter(): Counter   // 活跃时间计数器
 setLoggerProvider(provider: LoggerProvider): void
 getEventLogger(): Logger | undefined
 setMeterProvider(provider: MeterProvider): void
-setTracerProvider(provider: BasicTracerProvider): voi**设计说明**: 完整集成 OpenTelemetry 标准，支持 Metrics、Logs、Traces 三大支柱。计数器覆盖了从会话到代码编辑的各个维度。
+setTracerProvider(provider: BasicTracerProvider): void
+```
+
+**设计说明**: 完整集成 OpenTelemetry 标准，支持 Metrics、Logs、Traces 三大支柱。计数器覆盖了从会话到代码编辑的各个维度。
 
 #### 7. Agent 与 UI (Agent & UI)
 
@@ -163,7 +166,7 @@ getAgentColorMap(): Map<string, AgentColorName>    // Agent ID → 颜色映射
 getLastAPIRequest(): unknown
 setLastAPIRequest(request: unknown): void
 getLastAPIRequestMessages(): Message[]
-setLastAPIRequestMessages(messages: Messageid
+setLastAPIRequestMessages(messages: Message[]): void
 getLastClassifierRequests(): unknown[]
 setLastClassifierRequests(requests: unknown[]): void
 ```
@@ -210,7 +213,7 @@ setScheduledTasksEnabled(enabled: boolean): void
 
 **设计说明**: 支持会话内的定时任务（如定期检查部署状态），任务随会话结束而销毁。
 
-#### 13. Hook 系统System)
+#### 13. Hook 系统 (Hook System)
 
 ```typescript
 registerHookCallbacks(hooks: Partial<Record<HookEvent, RegisteredHookMatcher[]>>): void
@@ -252,7 +255,7 @@ getCacheEditingHeaderLatched(): boolean  // 缓存编辑模式
 setCacheEditingHeaderLatched(v: boolean): void
 ```
 
-**设计说明**: 使用"锁存"（latched）模式，一旦设置在整个会变。这些标志通过 HTTP 头传递给 API。
+**设计说明**: 使用"锁存"（latched）模式，一旦设置在整个会话中不再改变。这些标志通过 HTTP 头传递给 API。
 
 ---
 

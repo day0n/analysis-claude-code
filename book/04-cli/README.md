@@ -279,7 +279,7 @@ type RuleCategory = 'allow' | 'soft_deny' | 'environment'
 ├─────────────────────────────────────┤
 │  SerialBatchEventUploader           │
 │  ├── 100ms 缓冲窗口                 │
-│  ├ stream_event          │
+│  ├── 合并 stream_event             │
 │  └── 指数退避重试                    │
 ├─────────────────────────────────────┤
 │  超时配置:                           │
@@ -303,7 +303,7 @@ cli/
 │   └── remoteIO.ts (继承扩展)
 │
 ├── handlers/
-│   ├── auth.ts ← constantsh 配置)
+│   ├── auth.ts ← constants/oauth (OAuth 配置)
 │   ├── plugins.ts ← services/ (插件服务)
 │   ├── autoMode.ts ← services/api/ (LLM 调用)
 │   └── mcp.tsx ← tools/ (MCP 工具注册)
