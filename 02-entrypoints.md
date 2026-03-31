@@ -13,12 +13,14 @@
 
 | 文件 | 行数 | 说明 |
 |------|------|------|
-| `cli.tsx` | ~2000+ | CLI 主入口（最大文件） |
-| `mcp.ts` | 197 | MCP 服务器入口 |
-| `sandboxTypes.ts` | 157 | 沙箱类型定义 |
-| `agentSdkTypes.ts` | ~500+ | Agent SDK 类型定义 |
-| `sdk/coreTypes.ts` | 63 | SDK 核心类型 |
-| `sdk/controlSchemas.ts` | 664 | SDK 控制协议 Schema |
+| `cli.tsx` | 302 | CLI 主入口 |
+| `init.ts` | 340 | 初始化入口（文档之前遗漏） |
+| `mcp.ts` | 196 | MCP 服务器入口 |
+| `sandboxTypes.ts` | 156 | 沙箱类型定义 |
+| `agentSdkTypes.ts` | 443 | Agent SDK 类型定义（re-export hub + stub 函数） |
+| `sdk/coreTypes.ts` | 62 | SDK 核心类型（HOOK_EVENTS, EXIT_REASONS 常量） |
+| `sdk/coreSchemas.ts` | 1889 | SDK 核心 Schema（文档之前遗漏，最大文件） |
+| `sdk/controlSchemas.ts` | 663 | SDK 控制协议 Schema |
 
 ---
 

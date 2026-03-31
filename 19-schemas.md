@@ -1,13 +1,14 @@
 # 19 - schemas 模块源码分析
 
 > 路径: `src/schemas/`
+> 文件数: 1 个（hooks.ts）
 > 功能: Zod Schema 定义 — 运行时类型验证
 
 ---
 
 ## hooks.ts — 钩子 Schema
 
-**行数**: 223 行
+**行数**: 222 行
 
 ### 核心设计
 
