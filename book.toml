@@ -1,0 +1,17 @@
+[book]
+title = "Claude Code 源码深度解析"
+authors = ["day0n"]
+description = "基于泄露源码的逆向分析，覆盖 1903 个 TypeScript 文件、35+ 模块"
+language = "zh-CN"
+src = "book"
+
+[build]
+build-dir = "docs"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/day0n/analysis-claude-code"
+edit-url-template = "https://github.com/day0n/analysis-claude-code/edit/main/{path}"
+no-section-label = false
+additional-css = ["book/custom.css"]

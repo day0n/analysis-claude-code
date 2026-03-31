@@ -1,0 +1,41 @@
+/* 中文排版优化 */
+:root {
+  --content-max-width: 900px;
+}
+
+.content main {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.8;
+}
+
+/* 代码块优化 */
+code {
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace;
+  font-size: 0.875em;
+}
+
+pre > code {
+  font-size: 0.85em;
+}
+
+/* 表格优化 */
+table {
+  display: table;
+  width: 100%;
+  font-size: 0.9em;
+}
+
+table th {
+  white-space: nowrap;
+}
+
+/* 标题间距 */
+h2 {
+  margin-top: 2em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--table-border-color);
+}
+
+h3 {
+  margin-top: 1.5em;
+}
