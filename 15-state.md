@@ -178,7 +178,7 @@ function formatTeammateStatus(teammate: TeammateState): string
 | 特性 | bootstrap/state.ts | state/ 模块 |
 |------|-------------------|-------------|
 | 类型 | 全局单例对象 | React 感知的 Store |
-| 访问方式 | getter/setter 函数 | useAppSk |
+| 访问方式 | getter/setter 函数 | useAppState Hook |
 | 重渲染 | 不触发 | 自动触发组件重渲染 |
 | 用途 | 非 UI 状态（API、遥测） | UI 相关状态（消息、任务） |
 | 生命周期 | 进程级 | 组件树级 |

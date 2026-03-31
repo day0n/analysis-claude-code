@@ -1,7 +1,7 @@
 # 09 - query 模块源码分析
 
 > 路径: `src/query/`
-> 文件数: 5 个
+> 文件数: 4 个
 > 功能: 查询执行核心 — 与 Claude API 交互的主循环
 
 ---
@@ -45,13 +45,13 @@ function buildQueryConfig(): QueryConfig {
     sessionId: getSessionId(),
     gates: {
       // Statsig 特性门控（使用缓存值，可能过期）
-      streamingToolExecution: checkStatsigFeatureGate_CACHED_MAY_BE_STALE('streaming_tool_exec'),
+      streamingToolExecution: checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_streaming_tool_execution2'),
       // 环境变量控制
-      emitToolUseSummaries: isEnvTruthy('EMIT_TOOL_USE_SUMMARIES'),
+      emitToolUseSummaries: isEnvTruthy(process.env.CLAUDE_CODE_EMIT_TOOL_USE_SUMMARIES),
       // 内部用户检测
-      isAnt: detectIsAnt(),
+      isAnt: process.env.USER_TYPE === 'ant',
       // 快速模式（内联检测，避免引入重模块图）
-      fastMode: isFastModeEnabled(),
+      fastModeEnabled: !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_FAST_MODE),
     }
   }
 }
@@ -82,7 +82,7 @@ type QueryDeps = {
   callModel: typeof queryModelWithStreaming   // 模型 API 调用
   microcompact: typeof microcompactMessages   // 消息微压缩
   autocompact: typeof autoCompactIfNeeded     // 自动压缩
-  uuid: typeof randomUUID                     // UUID 生成
+  uuid: () => string                         // UUID 生成
 }
 ```
 
@@ -176,7 +176,7 @@ type StopDecision = {
 
 ## 4. stopHooks.ts — 停止钩子编排器
 
-**行数**: 474 行
+**行数**: 473 行
 
 ### 功能概述
 在每个查询回合结束时编排停止钩子的执行，管理后台任务（记忆提取、自动推理、提示建议），协调钩子结果。

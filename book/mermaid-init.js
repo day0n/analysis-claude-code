@@ -25,6 +25,18 @@
             const svg = container.querySelector('svg');
             if (!svg) return;
 
+            // Fix SVG for crisp vector scaling — remove fixed pixel dimensions
+            const origWidth = svg.getAttribute('width');
+            const origHeight = svg.getAttribute('height');
+            if (!svg.getAttribute('viewBox') && origWidth && origHeight) {
+                svg.setAttribute('viewBox', `0 0 ${parseFloat(origWidth)} ${parseFloat(origHeight)}`);
+            }
+            svg.removeAttribute('width');
+            svg.removeAttribute('height');
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.maxWidth = 'none';
+
             // Create wrapper
             const wrapper = document.createElement('div');
             wrapper.style.cssText = 'position:relative;overflow:hidden;border:1px solid rgba(128,128,128,0.3);border-radius:8px;margin:1em 0;cursor:grab;';
