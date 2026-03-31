@@ -15,3 +15,7 @@ git-repository-url = "https://github.com/day0n/analysis-claude-code"
 edit-url-template = "https://github.com/day0n/analysis-claude-code/edit/main/{path}"
 no-section-label = false
 additional-css = ["book/custom.css"]
+additional-js = ["book/mermaid.min.js", "book/mermaid-init.js"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
