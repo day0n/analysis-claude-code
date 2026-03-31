@@ -15,7 +15,7 @@
 ## state.ts — 全局状态容器
 
 **行数**: 1758 行
-**导出数量**: 150+ 个函数
+**导出数量**: 215 个（函数、类型、常量等）
 
 ### 架构设计
 
@@ -44,10 +44,9 @@ getSessionId(): SessionId           // 获取当前会话 ID
 regenerateSessionId(): void         // 重新生成会话 ID
 switchSession(id: SessionId): void  // 切换到指定会话
 getParentSessionId(): SessionId | undefined  // 获取父会话 ID（子Agent场景）
-setParentSessionId(id: SessionId): void
 ```
 
-**设计说明**: 会话 ID 使用 `crypto.randomUUID()` 生成，支持父子会话关系（用于子 Agent 场景）。`switchSession` 在恢复历史会话时使用。
+**设计说明**: 会话 ID 使用 `randomUUID()` 生成（通过 `src/utils/crypto.js` 封装），支持父子会话关系（用于子 Agent 场景）。`switchSession` 在恢复历史会话时使用。注意：`parentSessionId` 只有 getter，没有独立的 setter。
 
 #### 2. 路径管理 (Path Management)
 
@@ -56,8 +55,8 @@ getOriginalCwd(): string            // 获取原始工作目录
 setOriginalCwd(path: string): void
 getProjectRoot(): string            // 获取项目根目录
 setProjectRoot(path: string): void
-getCwdState(): CwdState             // 获取当前工作目录状态
-setCwdState(state: CwdState): void
+getCwdState(): string             // 获取当前工作目录状态
+setCwdState(state: string): void
 ```
 
 **设计说明**: 区分"原始工作目录"（用户启动 CLI 的位置）和"项目根目录"（git 仓库根目录），这对于正确解析相对路径至关重要。
@@ -66,7 +65,7 @@ setCwdState(state: CwdState): void
 
 ```typescript
 // 费用
-addToTotalCostState(cost: number): void
+addToTotalCostState(cost: number, modelUsage: ModelUsage, model: string): void
 getTotalCostUSD(): number
 
 // API 耗时
@@ -94,9 +93,10 @@ getTotalCacheReadInputTokens(): number
 getTotalCacheCreationInputTokens(): number
 
 // 按模型统计
-recordModelUsage(model: string, usage: ModelUsage): void
 getModelUsage(): { [modelName: string]: ModelUsage }
-getTotalTokensAcrossModels(): number
+```
+
+> 注意：不存在独立的 `recordModelUsage()` 和 `getTotalTokensAcrossModels()` 函数。模型使用数据通过 `addToTotalCostState()` 的第二、三个参数间接记录。
 ```
 
 **ModelUsage 结构**:
@@ -120,8 +120,8 @@ getMainLoopModelOverride(): ModelSetting | undefined
 setMainLoopModelOverride(model: ModelSetting | undefined): void
 getInitialMainLoopModel(): ModelSetting
 setInitialMainLoopModel(model: ModelSetting): void
-getModelStrings(): ModelSetting
-setModelStrings(settings: ModelSetting): void
+getModelStrings(): ModelStrings | null
+setModelStrings(settings: ModelStrings): void
 ```
 
 **设计说明**: 支持运行时模型切换（通过 `/model` 命令），同时保留初始模型配置用于回退。
@@ -152,9 +152,7 @@ setTracerProvider(provider: BasicTracerProvider): voi**设计说明**: 完整集
 #### 7. Agent 与 UI (Agent & UI)
 
 ```typescript
-getAgentColor(): string                    // 获取当前 Agent 颜色
-getAgentColorMap(): Map<string, string>    // Agent ID → 颜色映射
-incrementAgentColorIndex(): void           // 递增颜色索引
+getAgentColorMap(): Map<string, AgentColorName>    // Agent ID → 颜色映射
 ```
 
 **设计说明**: 多 Agent 场景下，每个 Agent 分配不同颜色用于 UI 区分。颜色从预定义调色板中循环分配。
@@ -175,11 +173,10 @@ setLastClassifierRequests(requests: unknown[]): void
 #### 9. 错误日志 (Error Logging)
 
 ```typescript
-addToInMemoryErrorLog(error: ErrorLogEntry): void
-getInMemoryErrorLog(): ErrorLogEntry[]
+addToInMemoryErrorLog(errorInfo: { error: string; timestamp: string }): void
 ```
 
-**设计说明**: 内存中的错误日志，用于 `doctor` 诊断命令和调试。不持久化到磁盘。
+**设计说明**: 内存中的错误日志，用于 `doctor` 诊断命令和调试。不持久化到磁盘。注意：只有写入函数，没有独立的 `getInMemoryErrorLog()` getter。
 
 #### 10. 插件系统 (Plugin System)
 
@@ -216,15 +213,15 @@ setScheduledTasksEnabled(enabled: boolean): void
 #### 13. Hook 系统System)
 
 ```typescript
-registerHookCallbacks(event: HookEvent, callbacks: HookCallback[]): void
-getRegisteredHooks(): Map<HookEvent, HookCallback[]>
+registerHookCallbacks(hooks: Partial<Record<HookEvent, RegisteredHookMatcher[]>>): void
+getRegisteredHooks(): Partial<Record<HookEvent, RegisteredHookMatcher[]>> | null
 clearRegisteredHooks(): void
 ```
 
 #### 14. 技能追踪 (Skills Tracking)
 
 ```typescript
-addInvokedSkill(skill: string): void
+addInvokedSkill(skillName: string, skillPath: string, content: string, agentId: string | null = null): void
 getInvokedSkills(): Map<string, InvokedSkillInfo>
 clearInvokedSkills(): void
 ```
@@ -236,9 +233,9 @@ clearInvokedSkills(): void
 ```typescript
 getPromptCache1hAllowlist(): string[] | null
 setPromptCache1hAllowlist(allowlist: string[] | null): void
-getPromptCache1hEligible(): boolean
+getPromptCache1hEligible(): boolean | null
 setPromptCache1hEligible(eligible: boolean): void
-getCachedClaudeMdContent(): string | undefined
+getCachedClaudeMdContent(): string | null
 setCachedClaudeMdContent(content: string): void
 ```
 
@@ -247,7 +244,7 @@ setCachedClaudeMdContent(content: string): void
 #### 16. 模式标志 (Mode Flags)
 
 ```typescript
-getAfkModeHeaderLatched(): boolean    // AFK 模式（离开键盘）
+getAfkModeHeaderLatched(): boolean | null    // AFK 模式（离开键盘）
 setAfkModeHeaderLatched(v: boolean): void
 getFastModeHeaderLatched(): boolean   // 快速模式
 setFastModeHeaderLatched(v: boolean): void
@@ -279,7 +276,7 @@ setCacheEditingHeaderLatched(v: boolean): void
 
 `state.ts` 的 1758 行看起来很多，但考虑到：
 - 它是整个应用唯一的全局状态容器
-- 150+ 个函数大多是简单的 getter/setter（平均每个 ~10 行）
+- 215 个导出大多是简单的 getter/setter（平均每个 ~8 行）
 - 集中管理避免了状态分散导致的一致性问题
 - 类型安全的访问器比直接操作全局对象更可靠
 

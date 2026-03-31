@@ -13,18 +13,18 @@
 
 | 文件 | 行数 | 说明 |
 |------|------|------|
-| `structuredIO.ts` | 860 | SDK 消息协议核心实现 |
-| `remoteIO.ts` | 256 | 远程双向流式 IO |
-| `print.ts` | ~2000+ | 输出打印/格式化（大文件） |
+| `structuredIO.ts` | 859 | SDK 消息协议核心实现 |
+| `remoteIO.ts` | 255 | 远程双向流式 IO |
+| `print.ts` | 5594 | 输出打印/格式化（最大文件） |
 | `ndjsonSafeStringify.ts` | 33 | NDJSON 安全序列化 |
 | `exit.ts` | 32 | 退出辅助函数 |
-| `update.ts` | ~100 | 版本更新检查 |
+| `update.ts` | 422 | 版本更新检查 |
 | `handlers/auth.ts` | 331 | OAuth 认证处理 |
 | `handlers/plugins.ts` | 879 | 插件管理处理 |
 | `handlers/autoMode.ts` | 171 | 自动模式配置 |
 | `handlers/agents.ts` | 71 | Agent 列表显示 |
 | `handlers/util.tsx` | 110 | 杂项子命令 |
-| `handlers/mcp.tsx` | ~1500+ | MCP 服务器管理 |
+| `handlers/mcp.tsx` | 361 | MCP 服务器管理 |
 | `transports/HybridTransport.ts` | 283 | 混合传输（WS读+HTTP写） |
 | `transports/WebSocketTransport.ts` | ~200 | WebSocket 传输 |
 | `transports/SSETransport.ts` | ~200 | SSE 传输 |
@@ -39,7 +39,7 @@
 
 ### 1. structuredIO.ts — SDK 消息协议核心
 
-**行数**: 860 行
+**行数**: 859 行
 
 #### 功能概述
 实现 SDK 模式下的完整消息协议，处理控制请求/响应、权限管理、Hook 回调和 MCP 消息转发。
@@ -112,10 +112,10 @@ class StructuredIO {
 
 ### 2. remoteIO.ts — 远程双向流式 IO
 
-**行数**: 256 行
+**行数**: 255 行
 
 #### 功能概述
-扩展 `StructuredIO`，添加远程会话支持ocket/SSE 传输、会话令牌刷新和 keep-alive 机制。
+扩展 `StructuredIO`，添加远程会话支持（WebSocket/SSE 传输、会话令牌刷新和 keep-alive 机制）。
 
 #### 导出
 - `RemoteIO` 类（继承 `StructuredIO`）
