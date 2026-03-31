@@ -2,13 +2,15 @@
 
 > 路径: `src/tasks/`
 > 文件数: 12 个
-> 功能: 后台任务管理 — 7 种任务类型的完整生命周期管理
+> 功能: 后台任务管理 — 类型系统定义了 7 种任务类型，其中 5 种有独立子目录实现
 
 ---
 
 ## 模块概述
 
 `tasks/` 实现了 Claude Code 的后台任务系统，使用 discriminated union 架构统一管理 7 种任务类型。每种任务类型有独立的状态接口、类型守卫、React 组件和生命周期函数。
+
+> **注意**: `LocalWorkflowTask` 和 `MonitorMcpTask` 在 `types.ts` 中被引用，但源码目录中没有对应的 TypeScript 源文件（可能是构建时生成或尚未完全实现）。`LocalMainSessionTask` 是根级文件而非子目录。
 
 ---
 
@@ -20,10 +22,12 @@ TaskState (discriminated union)
 ├── LocalAgentTask      — 本地子 Agent (type: 'local_agent')
 ├── RemoteAgentTask     — 远程 Agent (type: 'remote_agent')
 ├── InProcessTeammate   — 进程内队友 (type: 'in_process_teammate')
-├── LocalMainSession    — 本地主会话后台化 (type: 'local_main_session')
-├── DreamTask           — 后台推理/记忆整合 (type: 'dream')
-└── MonitorMcpTask      — MCP 监控 (type: 'monitor_mcp')
+├── LocalWorkflowTask   — 本地工作流 (type: 'local_workflow')（源码中无 TS 目录）
+├── MonitorMcpTask      — MCP 监控 (type: 'monitor_mcp')（源码中无 TS 目录）
+└── DreamTask           — 后台推理/记忆整合 (type: 'dream')
 ```
+
+> `LocalMainSessionTask` 作为根级文件 `LocalMainSessionTask.ts`（479 行）存在，未包含在 TaskState union 中，它复用了 LocalAgentTask 的状态结构。
 
 ---
 
@@ -40,9 +44,9 @@ type TaskState =
   | LocalAgentTaskState
   | RemoteAgentTaskState
   | InProcessTeammateTaskState
-  | LocalMainSessionTaskState
-  | DreamTaskState
+  | LocalWorkflowTaskState
   | MonitorMcpTaskState
+  | DreamTaskState
 
 // 后台任务（运行中或待处理 + 已后台化）
 type BackgroundTaskState = TaskState
@@ -145,7 +149,7 @@ completeDreamTask() 或 failDreamTask()
 
 ### 5. LocalMainSessionTask — 主会话后台化
 
-**行数**: 480 行
+**行数**: 479 行（根级文件 `LocalMainSessionTask.ts`，非子目录）
 
 #### 功能
 支持用户按 Ctrl+B 两次将当前主会话查询后台化，继续在前台进行新对话。
@@ -235,7 +239,7 @@ function isShellTaskStalled(task: LocalShellTaskState): boolean {
   const interactivePatterns = [
     /\(y\/n\)/,
     /\[y\/n\]/,
-    /Press any knter password/,
+    /Press any key|Enter password/,
   ]
   return task.lastOutputAge > STALL_THRESHOLD
     || interactivePatterns.some(p => p.test(task.lastOutput))
@@ -269,7 +273,7 @@ function killShellTasksForAgent(agentId: AgentId): void {
 **行数**: 682 行
 
 #### 功能
-管理本地子 Agen执行，包括进度追踪、消息队列和磁盘输出。
+管理本地子 Agent 执行，包括进度追踪、消息队列和磁盘输出。
 
 #### 进度追踪
 
@@ -345,7 +349,7 @@ registerRemoteAgentTask()
 // Ultraplan 有特殊的阶段状态
 type UltraplanPhase =
   | 'needs_input'   // 等待用户输入（◇ 空心钻石）
-  | 'pleady'    // 计划就绪（◆ 实心钻石）
+  | 'plan_ready'    // 计划就绪（◆ 实心钻石）
   | 'executing'     // 执行中
 ```
 
@@ -408,7 +412,7 @@ tasks/
 ├── pillLabel.ts ← UI 标签
 │
 ├── DreamTask/ ← 后台推理
-├── LocalMainSessionTask/ ← 主会话后台化
+├── LocalMainSessionTask.ts ← 主会话后台化（根级文件，复用 LocalAgentTask 状态）
 ├── InProcessTeammateTask/ ← 队友协作
 │   ├── types.ts
 │   └── InProcessTeammateTask.tsx
