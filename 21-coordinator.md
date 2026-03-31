@@ -2,73 +2,73 @@
 
 > 路径: `src/coordinator/`
 > 文件数: 1 个
-> 功能: 多会话协调器 — Spawn 模式下的并发会话管理
+> 行数: 369 行
+> 功能: 协调器模式 — 功能标志检测、会话模式匹配和 Worker 上下文构建
 
 ---
 
-## coordinatorMode.ts
+## 模块概述
 
-**行数**: 370 行
+`coordinator/` 模块实现的是协调器模式的功能标志和上下文构建，**不是**多会话管理或容量控制系统。核心功能是检测当前是否处于协调器模式，匹配会话模式，以及为 Worker 构建工具上下文和系统提示。
 
-### 功能概述
-管理多个并发会话的协调，支持从 Web UI 创建多个并行会话（Spawn 模式）。
+---
 
-### 核心概念
+## coordinatorMode.ts — 唯一文件
 
-```
-Coordinator（协调器）
-├── 管理多个并发 Session
-├── 容量控制（限制同时运行数）
-├── 消息路由（将消息分发到正确的 Session）
-├── 生命周期管理（创建/销毁 Session）
-└── 状态同步（向 Web UI 报告状态）
-```
-
-### Spawn 模式类型
-
-| 模式 | 说明 |
-|------|------|
-| single-session | 单会话（默认） |
-| same-dir | 同目录多会话 |
-| worktree | 每个会话独立 git worktree |
-
-### 容量管理
+### 核心导出
 
 ```typescript
-// 限制同时运行的会话数量
-const MAX_CONCURRENT_SESSIONS = 5
-
-function canSpawnNewSession(): boolean {
-  return getRunningSessionCount() < MAX_CONCURRENT_SESSIONS
+// 检测是否处于协调器模式
+function isCoordinatorMode(): boolean {
+  if (feature('COORDINATOR_MODE')) {
+    return isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)
+  }
+  return false
 }
+
+// 匹配会话模式（恢复会话时检查模式是否一致）
+function matchSessionMode(
+  sessionMode: 'coordinator' | 'normal' | undefined
+): string | undefined
+
+// 构建 Worker 的用户上下文（工具列表、系统提示等）
+function getCoordinatorUserContext(options: {
+  scratchpadDir?: string
+}): CoordinatorUserContext
+
+// 返回协调器系统提示词
+function getCoordinatorSystemPrompt(): string
 ```
 
-### 会话路由
+### 设计说明
 
-```
-Web UI 发送消息
-    ↓
-Coordinator 接收
-    ↓
-根据 sessionId 路由
-    ├── 已有会话 → 转发到对应 Session
-    └── 新会话请求 → 检查容量 → 创建新 Session
-```
+- 通过 `feature('COORDINATOR_MODE')` 编译时门控 + `CLAUDE_CODE_COORDINATOR_MODE` 环境变量双重控制
+- `matchSessionMode()` 在恢复会话时检查当前模式与会话存储的模式是否一致，不一致时翻转环境变量
+- Worker 工具上下文定义了 Worker 可用的工具集（排除 TeamCreate/TeamDelete/SendMessage/SyntheticOutput 等内部工具）
+- 支持 scratchpad 功能（通过 `tengu_scratch` Statsig 门控）
 
-### 状态同步
+### 内部常量
 
 ```typescript
-// 向 Web UI 报告所有会话状态
-function broadcastStatus(): void {
-  const sessions = getActiveSessions()
-  bridge.send({
-    type: 'coordinator_status',
-    sessions: sessions.map(s => ({
-      id: s.id,
-      title: s.title,
-      status: s.status,
-      activity: s.currentActivity,
-    }))
-  })
-}
+// Worker 不可用的内部工具
+const INTERNAL_WORKER_TOOLS = new Set([
+  TEAM_CREATE_TOOL_NAME,
+  TEAM_DELETE_TOOL_NAME,
+  SEND_MESSAGE_TOOL_NAME,
+  SYNTHETIC_OUTPUT_TOOL_NAME,
+])
 ```
+
+---
+
+## 与其他模块的关系
+
+```
+coordinator/
+├── ← bootstrap/state.ts (isCoordinatorMode 被全局使用)
+├── → tools/ (引用工具名常量)
+├── → services/analytics/ (Statsig 门控)
+└── → constants/tools.ts (ASYNC_AGENT_ALLOWED_TOOLS)
+```
+
+> 注意：多会话的 Spawn 模式逻辑在 `bridge/bridgeUI.ts` 中，不在 coordinator 模块。

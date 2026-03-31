@@ -235,7 +235,7 @@ function isShellTaskStalled(task: LocalShellTaskState): boolean {
   const interactivePatterns = [
     /\(y\/n\)/,
     /\[y\/n\]/,
-    /Press any knter password/,
+    /Press any key|Enter password/,
   ]
   return task.lastOutputAge > STALL_THRESHOLD
     || interactivePatterns.some(p => p.test(task.lastOutput))
@@ -269,7 +269,7 @@ function killShellTasksForAgent(agentId: AgentId): void {
 **行数**: 682 行
 
 #### 功能
-管理本地子 Agen执行，包括进度追踪、消息队列和磁盘输出。
+管理本地子 Agent 执行，包括进度追踪、消息队列和磁盘输出。
 
 #### 进度追踪
 
@@ -345,7 +345,7 @@ registerRemoteAgentTask()
 // Ultraplan 有特殊的阶段状态
 type UltraplanPhase =
   | 'needs_input'   // 等待用户输入（◇ 空心钻石）
-  | 'pleady'    // 计划就绪（◆ 实心钻石）
+  | 'plan_ready'    // 计划就绪（◆ 实心钻石）
   | 'executing'     // 执行中
 ```
 

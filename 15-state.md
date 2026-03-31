@@ -2,6 +2,7 @@
 
 > 路径: `src/state/`
 > 文件数: 6 个
+> 总行数: 1190 行
 > 功能: React 感知的应用状态管理 — 组件级订阅与重渲染
 
 ---
@@ -14,121 +15,120 @@
 
 ## 文件详解
 
-### 1. store.ts — 状态存储核心
-
-#### 功能
-创建中心化的状态存储实例，提供 `getState()`、`setState()`、`subscribe()` 等核心方法。
+### 1. store.ts — 状态存储核心（34 行）
 
 #### 核心 API
 
 ```typescript
-const store = createStore<AppState>(initialState)
+type Store<T> = {
+  getState: () => T
+  setState: (updater: (prev: T) => T) => void  // 接受 updater 函数，不是部分状态
+  subscribe: (listener: () => void) => () => void  // listener 无参数，返回 unsubscribe
+}
 
-// 获取当前状态快照
-store.getState()
-
-// 更新状态（浅合并）
-store.setState({ isProcessing: true })
-
-// 订阅状态变化
-store.subscribe((newState, prevState) => {
-  // 响应变化
-})
+function createStore<T>(
+  initialState: T,
+  onChange?: (args: { newState: T; oldState: T }) => void
+): Store<T>
 ```
+
+> 注意：`setState` 接受 updater 函数 `(prev) => next`，不是直接传入部分状态对象。`subscribe` 的 listener 不接收参数。`onChange` 回调（接收新旧状态）是 `createStore` 的第二个参数。
 
 ---
 
-### 2. AppStateStore.ts — 应用状态定义
+### 2. AppStateStore.ts — 应用状态定义（569 行）
 
 #### 功能
 定义完整的应用状态结构和初始值。
 
-#### 状态结构
+#### 实际 AppState 关键字段
 
 ```typescript
 interface AppState {
-  // 对话状态
+  // 设置与配置
+  settings: SettingsJson
+  verbose: boolean
+  mainLoopModel: ModelSetting
+  expandedView: boolean
+
+  // 权限
+  toolPermissionContext: ToolPermissionContext
+
+  // 任务（对象映射，非数组）
+  tasks: { [taskId: string]: TaskState }
+
+  // MCP
+  mcp: MCPState
+
+  // 插件
+  plugins: PluginState
+
+  // 推测执行
+  speculation: SpeculationState
+
+  // 团队视图
+  viewingAgentTaskId?: string
+
+  // 消息与对话
   messages: Message[]
-  isProcessing: boolean
-  currentToolUse: ToolUseInfo | null
-  streamingContent: string
 
-  // UI 状态
-  theme: Theme
-  vimMode: boolean
-  fastMode: boolean
-  fullscreenLayout: boolean
-  inputMode: 'normal' | 'insert' | 'visual'
+  // 文件历史
+  fileHistory: FileHistoryState
 
-  // 会话状态
-  sessionTitle: string | null
-  sessionId: string
-  isResumedSession: boolean
+  // 归因追踪
+  attribution: AttributionState
 
-  // 任务状态
-  tasks: TaskState[]
-  backgroundTasks: BackgroundTaskState[]
+  // 通知
+  notifications: Notification[]
 
-  // 权限状态
-  pendingPermission: PermissionRequest | null
-  permissionMode: PermissionMode
+  // 待办列表
+  todoList: TodoList | null
 
-  // 团队状态（Swarm 模式）
-  teammates: TeammateState[]
-  activeTeammate: string | null
-
-  // 费用状态
-  totalCostUSD: number
-  totalInputTokens: number
-  totalOutputTokens: number
+  // ... 更多字段
 }
 ```
 
+> 注意：`tasks` 是 `{ [taskId: string]: TaskState }` 对象映射，不是数组。
+
 ---
 
-### 3. selectors.ts — 状态选择器
+### 3. selectors.ts — 状态选择器（76 行）
 
 #### 功能
-派生状态选择器，避免不必要的组件重渲染。
+派生状态选择器，用于从 AppState 中提取计算状态。
+
+#### 实际导出
 
 ```typescript
-// 基础选择器
-const selectMessages = (state: AppState) => state.messages
-const selectIsProcessing = (state: AppState) => state.isProcessing
-const selectTasks = (state: AppState) => state.tasks
+// 获取当前查看的队友任务
+function getViewedTeammateTask(
+  appState: Pick<AppState, 'viewingAgentTaskId' | 'tasks'>
+): InProcessTeammateTaskState | undefined
 
-// 派生选择器
-const selectRunningTasks = (state: AppState) =>
-  state.tasks.filter(t => t.status === 'running')
+// 确定用户输入应路由到哪个 Agent
+type ActiveAgentForInput =
+  | { type: 'leader' }
+  | { type: 'viewed'; task: InProcessTeammateTaskState }
+  | { type: 'named_agent'; task: LocalAgentTaskState }
 
-const selectBackgroundTaskCount = (state: AppState) =>
-  state.backgroundTasks.length
-
-const selectHasPendingPermission = (state: AppState) =>
-  state.pendingPermission !== null
+function getActiveAgentForInput(appState: AppState): ActiveAgentForInput
 ```
 
 ---
 
-### 4. AppState.tsx — React Provider
+### 4. AppState.tsx — React Provider（199 行）
 
 #### 功能
 React Context Provider，将状态存储注入组件树。
 
 ```tsx
-function AppStateProvider({ children, initialState }) {
-  const store = useMemo(() => createStore(initialState), [])
-
-  return (
-    <AppStateContext.Provider value={store}>
-      {children}
-    </AppStateContext.Provider>
-  )
-}
+// Context 名称
+const AppStoreContext = createContext<Store<AppState>>(...)
+const HasAppStateContext = createContext<boolean>(false)  // 防嵌套
 
 // 消费 Hook
 function useAppState<T>(selector: (state: AppState) => T): T {
-  const store = useContext(AppStateContext)
+  const store = useContext(AppStoreContext)
   return useSyncExternalStore(
     store.subscribe,
     () => selector(store.getState())
@@ -138,37 +138,37 @@ function useAppState<T>(selector: (state: AppState) => T): T {
 
 ---
 
-### 5. onChangeAppState.ts — 状态变更监听
+### 5. onChangeAppState.ts — 状态变更监听（171 行）
 
 #### 功能
-注册状态变更的副作用处理器。
+硬编码的状态变更副作用处理器，响应特定字段的变化。
 
 ```typescript
-// 当特定状态片段变化时执行副作用
-onChangeAppState(
-  (state) => state.sessionTitle,  // 选择器
-  (title) => {                     // 副作用
-    updateTerminalTitle(title)
-  }
-)
+// 接收新旧状态，内部硬编码了对以下字段变化的响应：
+function onChangeAppState({ newState, oldState }: {
+  newState: AppState
+  oldState: AppState
+}): void {
+  // toolPermissionContext.mode 变化 → 通知权限模式变更
+  // mainLoopModel 变化 → 设置模型覆盖
+  // expandedView 变化 → 保存配置
+  // verbose 变化 → 保存配置
+  // settings 变化 → 应用环境变量、清除凭证缓存
+}
 ```
+
+> 注意：这不是一个通用的注册机制，而是一个具体的函数，内部硬编码了对特定字段变化的响应逻辑。
 
 ---
 
-### 6. teammateViewHelpers.ts — 队友视图辅助
+### 6. teammateViewHelpers.ts — 队友视图辅助（141 行）
 
-#### 功能
-Swarm 模式下队友状态的视图层辅助函数。
+#### 实际导出
 
 ```typescript
-// 获取排序后的队友列表
-function getRunningTeammatesSorted(state: AppState): TeammateState[]
-
-// 获取队友的显示颜色
-function getTeammateColor(agentId: string): string
-
-// 格式化队友状态文本
-function formatTeammateStatus(teammate: TeammateState): string
+function enterTeammateView(appState: AppState, taskId: string): void
+function exitTeammateView(appState: AppState): void
+function stopOrDismissAgent(appState: AppState, taskId: string): void
 ```
 
 ---
