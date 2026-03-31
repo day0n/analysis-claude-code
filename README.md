@@ -1,6 +1,6 @@
 # Claude Code 源码深度解析
 
-> 基于 Claude Code CLI 泄露源码的逆向分析，覆盖全部 1903 个 TypeScript 文件、35+ 模块的完整架构解读。
+> 基于 Claude Code CLI 泄露源码的逆向分析，覆盖全部 1884 个 TypeScript 文件、35+ 模块的完整架构解读。
 
 ## 在线阅读
 
@@ -22,11 +22,11 @@
 ├── 04-cli/           CLI 框架 (结构化IO, handlers, transports)
 ├── 05-commands/      86 个命令完整清单
 ├── 06-screens        三大屏幕 (REPL, 会话恢复, 诊断)
-├── 07-components/    110+ UI 组件
+├── 07-components/    389 UI 组件文件
 ├── 08-ink/           深度定制的 Ink 终端渲染引擎
 ├── 09-query          查询主循环 & Token 预算
 ├── 10-services/      API, 分析, MCP 等 20 个服务子目录
-├── 11-tools/         42 个 AI 工具实现
+├── 11-tools/         40 个 AI 工具实现
 ├── 12-skills         技能系统 (bundled + custom)
 ├── 13-plugins        插件系统
 ├── 14-hooks          双钩子系统 (React UI hooks + 执行引擎)
@@ -43,11 +43,11 @@
 ├── 25-vim            Vim 模式
 ├── 26-voice          语音交互
 ├── 27-buddy          Buddy 彩蛋
-├── 28-utils/         280+ 工具函数 & 31 子目录
+├── 28-utils/         564 工具文件 & 31 子目录
 ├── 29-native-ts      原生 TS 移植 (yoga-layout, file-index)
 ├── 30-memdir         记忆目录系统
 ├── 31-migrations     数据迁移
-├── 32-tasks/         7 种任务类型
+├── 32-tasks/         5 种任务类型
 ├── 33-upstreamproxy  上游代理
 ├── 34-outputStyles   输出样式
 └── 35-assistant      会话历史管理
@@ -56,26 +56,10 @@
 ## 核心发现
 
 - **自研终端引擎**: Fork 了 Ink 框架，用纯 TS 重写 Yoga 布局，添加完整终端协议栈
-- **工具工厂模式**: `buildTool(def)` 工厂函数构建所有 42 个工具，非类继承
-- **双钩子架构**: `src/hooks/` (85+ React hooks) vs `src/utils/hooks/` (执行引擎，28 种事件)
+- **工具工厂模式**: `buildTool(def)` 工厂函数构建所有 40 个工具，非类继承
+- **双钩子架构**: `src/hooks/` (104 React hooks) vs `src/utils/hooks/` (执行引擎，28 种事件)
 - **Token 预算**: 收益递减检测 — 连续 2 次 delta < 500 tokens 且续传 ≥ 3 次自动停止
 - **5005 行 REPL**: 整个项目最大单文件，管理对话、工具执行、权限、会话全生命周期
-
-## 本地构建
-
-```bash
-# 安装 mdBook
-cargo install mdbook
-# 或 macOS
-brew install mdbook
-
-# 构建并预览
-mdbook serve --open
-```
-
-## 自动部署
-
-推送到 `main` 分支后，GitHub Actions 自动构建并部署到 GitHub Pages。
 
 ## 声明
 
