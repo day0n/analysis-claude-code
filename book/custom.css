@@ -39,3 +39,25 @@ h2 {
 h3 {
   margin-top: 1.5em;
 }
+
+/* Mermaid pan-zoom 按钮 */
+.pz-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(128,128,128,0.4);
+  border-radius: 6px;
+  background: var(--bg, #1a1a2e);
+  color: var(--fg, #ccc);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.pz-btn:hover {
+  opacity: 1;
+  background: rgba(128,128,128,0.2);
+}

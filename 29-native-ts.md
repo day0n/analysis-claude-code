@@ -1,7 +1,7 @@
 # 29 - native-ts 模块源码分析
 
 > 路径: `src/native-ts/`
-> 文件数: ~10 个
+> 文件数: 4 个 .ts 文件（3 个子目录各 1 个 index.ts + 1 个 enums.ts）
 > 功能: 纯 TypeScript 原生实现 — 文件索引、Yoga 布局引擎、颜色 Diff
 
 ---

@@ -1,56 +1,52 @@
 # 23 - server 模块源码分析
 
 > 路径: `src/server/`
-> 功能: HTTP/WebSocket 服务器 — IDE 扩展和 Web UI 的通信后端
+> 文件数: 3 个
+> 功能: DirectConnect 会话管理 — 创建和管理直连会话
 
 ---
 
-## 功能概述
+## 模块概述
 
-提供 HTTP 和 WebSocket 服务器，用于：
-- IDE 扩展通信（VS Code / JetBrains）
-- Web UI 桥接（claude.ai/code）
-- MCP 服务器托管
-- 健康检查端点 (`/health`)
-- 会话状态查询 (`/status`)
+`server/` 模块实现的是 **DirectConnect 会话管理**，用于在远程服务器上创建和管理 Claude Code 会话。它不是传统的 HTTP/WebSocket 服务器。
 
 ---
 
-## 端点
+## 文件清单
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/health` | GET | 健康检查，返回 200 |
-| `/status` | GET | 会话状态（消息数、费用、模型等） |
-| `/ws` | WebSocket | 双向消息通道 |
-| `/mcp` | WebSocket/stdio | MCP 协议端点 |
+| 文件 | 说明 |
+|------|------|
+| `createDirectConnectSession.ts` | 创建 DirectConnect 会话（向远程服务器发起连接请求） |
+| `directConnectManager.ts` | DirectConnect 管理器（会话配置、连接状态管理） |
+| `types.ts` | 类型定义（连接响应 schema、配置类型） |
 
 ---
 
-## WebSocket 通信
+## 核心逻辑
 
-```
-IDE 扩展 / Web UI
-    ↕ WebSocket (/ws)
-Server
-    ↕ 内部事件
-REPL / Query Engine
-```
-
-### 消息类型
+### createDirectConnectSession.ts
 
 ```typescript
-// 服务器 → 客户端
-type ServerMessage =
-  | { type: 'message'; message: SDKMessage }
-  | { type: 'status'; status: SessionStatus }
-  | { type: 'permission_request'; request: PermissionRequest }
+class DirectConnectError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DirectConnectError'
+  }
+}
 
-// 客户端 → 服务器
-type ClientMessage =
-  | { type: 'user_message'; content: string }
-  | { type: 'permission_response'; response: PermissionUpdate }
-  | { type: 'control_request'; request: ServerControlRequest }
+// 在 DirectConnect 服务器上创建会话
+async function createDirectConnectSession(config: DirectConnectConfig): Promise<ConnectResponse>
+```
+
+### directConnectManager.ts
+
+管理 DirectConnect 的配置和连接状态，提供 `DirectConnectConfig` 类型。
+
+### types.ts
+
+```typescript
+// 连接响应的 Zod schema
+const connectResponseSchema = z.object({ ... })
 ```
 
 ---
@@ -59,8 +55,9 @@ type ClientMessage =
 
 ```
 server/
-├── ← bridge/ (桥接通信使用 server 的 WebSocket)
-├── ← cli/transports/ (传输层连接到 server)
-├── → screens/REPL.tsx (转发用户消息)
-└── → services/mcp/ (托管 MCP 服务器)
+├── ← screens/REPL.tsx (type-only import: DirectConnectConfig)
+├── ← remote/ (远程会话使用 DirectConnect)
+└── → utils/errors.js (错误处理)
 ```
+
+> 注意：IDE 扩展通信和 WebSocket 桥接功能由 `bridge/` 模块实现，不在 `server/` 中。
