@@ -80,3 +80,9 @@
 - [上游代理 (UpstreamProxy)](./33-upstreamproxy.md)
 - [输出样式 (OutputStyles)](./34-outputStyles.md)
 - [会话历史 (Assistant)](./35-assistant.md)
+
+---
+
+# 附录
+
+- [快问快答 (FAQ)](./99-FAQ.md)
