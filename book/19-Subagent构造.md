@@ -20,14 +20,14 @@ flowchart LR
     B --> C["生成独立 agentId"]
     C --> D["选择 system 与模型"]
     D --> E["重新装配并裁剪 tools"]
-    E --> F["克隆必要状态<br/>新建隔离状态"]
+    E --> F["新建局部状态<br/>按运行路径复制必要快照"]
     F --> G["以任务 Prompt 开始新消息链"]
     G --> H["独立 query 循环"]
     H --> I["结果成为父级 tool_result"]
     H --> J["sidechain transcript"]
 ```
 
-这条构造链解决了两个矛盾：既要让 Subagent 使用同一套文件、认证和执行基础设施，又不能让它直接改写主 Agent 的对话、读取缓存和当前工具状态。
+这条构造链解决了两个矛盾：既要让 Subagent 使用同一套文件、认证和执行基础设施，又不能让它直接改写主 Agent 的对话和当前工具状态。
 
 ## system：使用角色规则，不复制主线全文
 
@@ -44,7 +44,7 @@ flowchart LR
 - SubagentStart Hook 提供的附加上下文；
 - Agent 定义预加载的 Skills；
 - 路径触发的嵌套指令与 Memory；
-- 工具结果、任务通知和专门发给该实例的消息。
+- 工具结果、任务通知，以及在该实例可由注册名或合法 `agentId` 寻址时专门发给它的消息。
 
 父级只在自己的 transcript 中保留 Agent 工具调用、进度和最终结果，不把子链的全部思考与工具历史平铺进主对话。
 
@@ -54,9 +54,11 @@ flowchart LR
 
 同步 Subagent 可以使用比后台 Subagent 更宽的交互能力；后台实例会进一步移除需要主 UI、递归扩张或主线控制权的工具。Agent 自己声明的 MCP Server 则走专属后置增量路径，仍受调用时权限控制。
 
-## 状态：复制起点，分开推进
+## 状态：普通 Agent 从空读取状态开始，Fork 才复制父级
 
-普通 Subagent 会克隆父级读取状态与内容替换决策的快照，使已知文件和缓存决策有一致起点；克隆后两边独立推进，不共享同一个可变容器。
+普通 Subagent 不带父级消息前缀，因此从空的读取文件状态开始；它在自己的查询链中重新建立“读过什么、之后是否变化”。这避免父 Agent 的读取事实被误当成子 Agent 已经亲自观察过。
+
+Fork 不同：它复制父级消息前缀，所以同时复制父级读取状态和内容替换决策，保证旧工具结果在两条链中的投影一致。复制后仍各自推进，不共享同一个可变容器。
 
 它还会新建：
 
@@ -76,7 +78,7 @@ flowchart LR
 
 ### 后台 Subagent
 
-主 Agent 先得到任务标识，随后通过任务通知、TaskOutput 或定向消息取得进展和结果。后台任务使用独立取消器；主线一次 ESC 不会自动杀死它，需要显式 TaskStop 或生命周期清理。
+主 Agent 先得到任务标识，随后通过任务通知、TaskOutput 或定向消息取得进展和结果。定向消息要求目标仍能由注册名或合法 `agentId` 解析；运行中进入内存待处理队列，停止后只有 sidechain transcript 仍存在时才能尝试续跑。后台任务使用独立取消器；主线一次 ESC 不会自动杀死它，需要显式 TaskStop 或生命周期清理。
 
 前台任务被转为后台时，当前源码的可观察语义是以原始任务参数重新启动后台查询，不是把正在生成的内存上下文无缝搬过去。因此“转后台”不应被理解为冻结并迁移同一个调用栈。
 
@@ -84,7 +86,7 @@ flowchart LR
 
 Fork 仅在构建能力开启、交互入口且非协调器等条件满足时存在。它的目标不是角色隔离，而是**复制主线请求前缀并最大化缓存复用**：
 
-- 继承已渲染的 system 字节；
+- 优先复用父级已渲染的 system 字节；如果该快照缺失则回退重建，此时字节同一性只是最佳努力；
 - 复制父级历史和当前完整工具批次；
 - 精确继承 tools、模型、thinking 与交互标志；
 - 克隆读取和内容替换决策，分叉后各自推进；
@@ -92,11 +94,13 @@ Fork 仅在构建能力开启、交互入口且非协调器等条件满足时存
 
 Fork 不等于共享 live conversation。创建以后，父级新消息不会自动流入 Fork，Fork 的新消息也不会写回父级历史。它共享的是**创建时前缀**，不是持续可变状态。
 
-## Worktree 是可叠加的文件边界
+## 作用域化 CWD 与 Worktree 是两件事
 
-普通 Subagent 与 Fork 默认仍操作同一 checkout。只有显式 `isolation: worktree` 或 CWD 覆盖，才把该 Agent 的有效工作目录切到另一工作副本。
+普通 Subagent 与 Fork 默认仍操作同一 checkout。显式 CWD 覆盖只改变该 Agent 异步链看到的有效目录，目标可以是同一 checkout 的子目录或任意已有目录；它不会创建工作副本。
 
-Agent worktree 只沿该 Agent 的异步链覆盖 CWD，不会自动复制进程、认证、MCP、环境变量或外部服务。任务结束时，无变化的临时工作树可清理；存在修改、提交或无法安全判断时应保留并把路径返回父级。
+只有 `isolation: worktree` 才创建另一 checkout，并沿该 Agent 的异步链把 CWD 覆盖到那里。它不会自动复制进程、认证、MCP、环境变量或外部服务。任务结束时，无变化的临时工作树可清理；存在修改、提交或无法安全判断时应保留并把路径返回父级。
+
+Fork 叠加 Worktree 时，继承前缀里的路径和读取快照仍来自父 checkout，因此运行时会追加路径翻译和重新读取提醒。Worktree 提供文件副本，不能让旧上下文天然变成新副本的事实。
 
 ## 结果、记录与清理
 
@@ -117,4 +121,3 @@ Agent worktree 只沿该 Agent 的异步链覆盖 CWD，不会自动复制进程
 - Fork 路由：`src/tools/AgentTool/forkSubagent.ts`
 - 后台 Agent 任务：`src/tasks/LocalAgentTask/`
 - sidechain 与恢复：`src/utils/sessionStorage.ts`、`src/tools/AgentTool/resumeAgent.ts`
-
