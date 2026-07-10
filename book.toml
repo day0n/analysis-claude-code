@@ -1,5 +1,5 @@
 [book]
-title = "Claude Code 架构说明"
+title = "Claude Code Agent 架构教程"
 authors = ["day0n"]
 description = "基于源码，只讲 Claude Code 的系统架构、Prompt、Tools、Skills、Memory、Sandbox 与 Subagent"
 language = "zh-CN"
