@@ -19,7 +19,7 @@ flowchart LR
 |---|---|---|---|---|
 | CLAUDE.md 体系 | Claude 在这个环境里必须怎样工作 | 管理级、用户级、项目级、本地项目级 | 会话开头的 `user` 角色元提醒；进入 `claudeMd` 用户上下文 | 独立文件；项目文件可随仓库共享，本地文件只留在本机 |
 | 自动记忆 | 从过去会话保留用户偏好、反馈和非代码事实 | 默认按规范化项目根目录；同一仓库的 worktree 共用 | 记忆行为规则在系统 Prompt；索引通常随初始用户上下文，条件启用时相关正文作为尾部附件 | 跨会话目录，直到被更新或删除 |
-| Agent Memory | 让某一种 Agent 延续自己的专门经验 | Agent 类型 × `user`、`project` 或 `local` 范围 | 直接附加到该 Agent 的系统 Prompt | 跨该 Agent 的多次运行；不同 Agent 类型彼此分开 |
+| Agent Memory | 让某一种 Agent 延续自己的专门经验 | 自动记忆总开关开启后，按 Agent 类型 × `user`、`project` 或 `local` 范围 | 直接附加到该 Agent 的系统 Prompt | 跨该 Agent 的多次运行；不同 Agent 类型彼此分开 |
 | Session Memory | 让一条很长的当前会话在压缩后仍可继续 | 当前项目目录 × 当前 `sessionId` | 平时不逐轮注入；主要在压缩时成为摘要消息 | 随该会话保存，可服务同一会话恢复，不作为未来会话的通用经验 |
 | Transcript | 保存实际发生过什么 | 主会话一份，Subagent 各有侧链文件 | 不默认整体发送给模型；恢复时重建消息链，必要时检索 | JSONL 会话账本，受会话持久化与清理周期控制 |
 
@@ -56,7 +56,7 @@ flowchart LR
 
 ## Agent Memory 是角色专属的长期经验
 
-Agent 定义只有显式声明 `memory` 才拥有 Agent Memory。目录以 Agent 类型命名，所以同一项目里的“代码审查 Agent”和“测试 Agent”不会共享一锅经验。
+Agent Memory 只有在**自动记忆总开关开启，并且 Agent 定义显式声明 `memory`**时才成立。只写 frontmatter 不能越过全局关闭状态。目录以 Agent 类型命名，所以同一项目里的“代码审查 Agent”和“测试 Agent”不会共享一锅经验。
 
 它有三种范围：
 
@@ -64,7 +64,9 @@ Agent 定义只有显式声明 `memory` 才拥有 Agent Memory。目录以 Agent
 - `project`：位于项目的 `.claude/agent-memory/`，可随版本控制共享；
 - `local`：位于 `.claude/agent-memory-local/`，只属于当前项目与本机。
 
-它与自动记忆最大的架构差异是注入位置。Agent Memory 的规则和 `MEMORY.md` 内容在 Agent 构造时一起附加到该 Agent 的系统 Prompt，而不是进入主会话的用户上下文。启用它的 Agent 还会得到必要的读写工具能力，以维护自己的记忆目录。
+它与自动记忆最大的架构差异是注入位置。Agent Memory 的规则和 `MEMORY.md` 内容在 Agent 构造时一起附加到该 Agent 的系统 Prompt，而不是进入主会话的用户上下文。
+
+如果 Agent 本来使用显式工具 allowlist，构造阶段会补入维护记忆所需的读写能力；这只是 allowlist 补全，后续仍受 `disallowedTools`、全局 deny 和正常权限边界约束。Memory 声明不能强行恢复被明确禁止的工具。
 
 因此 Agent Memory 绑定的是“角色”，自动记忆绑定的是“用户与项目”。主 Agent 知道某条用户偏好，不代表每种专用 Agent 都应把它写进自己的角色经验；反过来也一样。
 
