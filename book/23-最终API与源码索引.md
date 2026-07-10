@@ -24,7 +24,7 @@
 
 ## 一份完整请求大致长这样
 
-下面是架构等价的脱敏示意。实际文本、模型名、工具数量、缓存标记和可选字段会随入口、Agent、功能开关和提供方变化。
+下面选择一个明确分支作为架构等价的脱敏示意：**正常主线程、Prompt caching 开启、ToolSearch 已启用、thinking 开启且模型支持 adaptive thinking**。实际文本、模型名、工具数量和字段会随入口、Agent、功能开关和提供方变化。
 
 ```json
 {
@@ -53,7 +53,10 @@
         },
         {
           "type": "text",
-          "text": "用户的真实需求"
+          "text": "用户的真实需求",
+          "cache_control": {
+            "type": "ephemeral"
+          }
         }
       ]
     }
@@ -102,9 +105,13 @@
 
 这份示意最重要的不是示例数字，而是四条通道同时存在：`system[]` 放基础与系统上下文，`messages[]` 放时序化对话，`tools[]` 放结构化能力，其他顶层字段控制本次推理与传输。
 
-## 已处于 Plan Mode 时，请求尾部是什么样
+这里同时选择了缓存开启分支，所以 system 和 message 都展示了缓存标记。正常主请求会在最后一条 message 的最后一个内容块放置恰好一个 message 级断点；不写缓存的 Fork 等特殊路径会把它移到最后一个共享前缀点。`system[]` 也不是固定两块：它可因归因前缀、默认 Prompt 动静边界和 global-cache 资格形成不同数量的块，缓存作用域可能是组织级、全局级或无标记。上面的两块只是一种代表快照。
 
-如果用户回合开始时已经处于 Plan Mode，运行时会收集 Plan 附件，转成 `<system-reminder>`，再与相邻 `user` 内容归一化。忽略更早历史后，请求尾部大致是：
+若 ToolSearch 条件不成立，示例中的 `ToolSearch` 会从 `tools[]` 移除，其他工具直接带完整 schema；若 thinking 关闭或模型不支持，该字段缺席，支持预算式 thinking 的模型则使用带 Token 预算的 `enabled` 形态。
+
+## 主 Agent 已处于五阶段 Plan 分支时，请求尾部是什么样
+
+如果主 Agent 的用户回合开始时已经处于标准五阶段 Plan 分支，运行时会收集 Plan 附件，转成 `<system-reminder>`，再与相邻 `user` 内容归一化。忽略更早历史后，请求尾部大致是：
 
 ```json
 {
@@ -122,13 +129,13 @@
 }
 ```
 
-这正是最容易误解的地方：五阶段 Plan 指令没有替换顶层 `system`，也没有成为一个新的 API role；它仍是 `user.content[]` 中由运行时追加的文本块。
+这正是最容易误解的地方：五阶段 Plan 指令没有替换顶层 `system`，也没有成为一个新的 API role；它仍是 `user.content[]` 中由运行时追加的文本块。访谈式 Plan 实验会换成迭代规划提醒，Subagent 也有自己的 Plan 提醒，不能把这段五阶段文本视为所有 Plan 请求的固定模板。
 
 完整提醒不会在每个工具回合重复。后续会按人类回合节流，并在完整与稀疏提醒之间切换；压缩后仍会重建有效的 Plan 状态。
 
 ## 模型先调用 EnterPlanMode 时，会多一个工具回合
 
-若当前并不在 Plan Mode，模型先从 `tools[]` 中调用 EnterPlanMode。用户同意后，下一次 API 请求的消息尾部大致如下：
+若当前并不在 Plan Mode，模型先从 `tools[]` 中调用 EnterPlanMode。它走普通权限管线：默认交互策略下可能询问并获得许可，allow／bypass 条件也可能直接放行。**调用成功后**，下一次 API 请求的消息尾部大致如下；示例继续选择主 Agent 的五阶段分支：
 
 ```json
 {
@@ -159,16 +166,7 @@
         {
           "type": "tool_result",
           "tool_use_id": "toolu_enter_plan",
-          "content": [
-            {
-              "type": "text",
-              "text": "用户已同意进入 Plan Mode"
-            },
-            {
-              "type": "text",
-              "text": "<system-reminder>Plan Mode 已激活及五阶段规划指令</system-reminder>"
-            }
-          ]
+          "content": "已经进入 Plan Mode，接下来应专注于探索与设计。\n\n<system-reminder>Plan Mode 已激活及五阶段规划指令</system-reminder>"
         }
       ]
     }
@@ -176,7 +174,7 @@
 }
 ```
 
-Plan 附件在工具批次完成后出现。消息归一化可以把 reminder 折入最后一个 `tool_result.content`，也可以在保持合法配对的前提下作为同一 `user` 消息的相邻文本块；具体表示取决于当时消息形状，语义边界相同。
+本地权限界面是否要求用户点击，不会被伪装成一句“用户已同意”发给 API。成功工具结果表达的是模式已经进入；Plan 附件在工具批次完成后出现。对上面这条普通字符串结果，纯文本 reminder 会直接拼入同一个 `tool_result.content` 字符串。其他工具结果形状或折叠受限时，reminder 才可能表现为内容数组或同一 `user` 消息中的相邻块。
 
 ## 普通工具调用如何形成下一次请求
 
@@ -224,12 +222,12 @@ Plan 附件在工具批次完成后出现。消息归一化可以把 reminder �
 |---|---|
 | `tool_choice` | 宿主需要限制或指定工具选择时 |
 | `betas` | 当前提供方和功能需要相应实验能力时 |
-| `temperature` | 思考关闭时可显式设置；思考开启时遵循 API 约束 |
+| `temperature` | thinking 关闭时发送，默认 `1` 且可覆盖；thinking 开启时省略 |
 | `context_management` | 上下文管理能力、beta 和当前策略同时满足时 |
 | `output_config` | 推理力度、任务 Token 预算或结构化输出启用时 |
 | `speed` | 快速模式当前可用、受支持且未处于冷却时 |
 
-请求级重试可以重新计算模型、最大输出、快速模式等动态字段，但不会因此丢弃上层 Agent 回合状态。
+同一模型内的 request retry 可以重新计算最大输出、快速模式等允许变化的动态字段。持续合资格过载触发模型 fallback 时，请求层抛出转移信号，由主查询循环更新模型并重新构造一次模型调用；它不是同一个请求闭包里悄悄改 `model`。两条路径都不会因此丢弃外层用户回合状态。
 
 ## 全书源码证据索引
 
