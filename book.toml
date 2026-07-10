@@ -1,7 +1,7 @@
 [book]
-title = "Claude Code 源码深度解析"
+title = "Claude Code 架构说明"
 authors = ["day0n"]
-description = "基于源码的逆向分析，覆盖 1884 个 TypeScript 文件、35+ 模块"
+description = "基于源码，只讲 Claude Code 的系统架构、Prompt、Tools、Skills、Memory、Sandbox 与 Subagent"
 language = "zh-CN"
 src = "book"
 
